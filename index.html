@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Soundness Snake: Proof Builder</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: 'Orbitron', monospace;
+  background: linear-gradient(135deg, #010409 0%, #0B132B 100%);
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #00f0ff;
+}
+
+#gameContainer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.game-area {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#gameCanvas {
+  display: block;
+  background: linear-gradient(135deg, #010409 0%, #0B132B 100%);
+  box-shadow: 0 0 50px rgba(0, 240, 255, 0.3), inset 0 0 100px rgba(0, 0, 0, 0.5);
+  border: 2px solid rgba(0, 240, 255, 0.3);
+  border-radius: 10px;
+  max-width: 100%;
+  max-height: 100%;
+  margin-bottom: 0;
+}
+
+.collected-container {
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 5;
+}
+
+.collected-label {
+  font-size: 11px;
+  opacity: 0.7;
+  letter-spacing: 2px;
+  color: #00f0ff;
+  text-align: center;
+  margin-bottom: 4px;
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.6);
+}
+
+#collectedLetters {
+  font-size: 28px;
+  font-weight: 900;
+  color: #00f0ff;
+  text-shadow: 0 0 15px rgba(0, 240, 255, 1), 0 0 25px rgba(0, 240, 255, 0.7);
+  letter-spacing: 3px;
+  min-width: 120px;
+  text-align: center;
+}
+
+#hud {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(1, 4, 9, 0.9);
+  padding: 15px 30px;
+  border-radius: 15px;
+  border: 2px solid rgba(0, 240, 255, 0.5);
+  box-shadow: 0 0 30px rgba(0, 240, 255, 0.3);
+  display: flex;
+  gap: 30px;
+  align-items: center;
+  z-index: 10;
+  backdrop-filter: blur(10px);
+}
+
+.hud-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.hud-label {
+  font-size: 12px;
+  opacity: 0.7;
+  letter-spacing: 2px;
+}
+
+.hud-value {
+  font-size: 24px;
+  font-weight: 900;
+  text-shadow: 0 0 10px rgba(0, 240, 255, 0.8);
+  letter-spacing: 1px;
+}
+
+
+
+#targetWordHint {
+  color: #b794f6;
+  min-width: 150px;
+  text-align: center;
+  font-family: monospace;
+  letter-spacing: 3px;
+}
+
+#score {
+  color: #b794f6;
+}
+
+#menuScreen, #gameOverScreen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: rgba(1, 4, 9, 0.95);
+  z-index: 100;
+  backdrop-filter: blur(10px);
+}
+
+.menu-title {
+  font-size: 48px;
+  font-weight: 900;
+  margin-bottom: 20px;
+  text-shadow: 0 0 20px rgba(0, 240, 255, 0.8);
+  letter-spacing: 3px;
+  animation: pulse 2s infinite;
+}
+
+.menu-subtitle {
+  font-size: 18px;
+  opacity: 0.7;
+  margin-bottom: 40px;
+  letter-spacing: 2px;
+}
+
+.button {
+  padding: 15px 40px;
+  font-size: 20px;
+  font-weight: 700;
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(183, 148, 246, 0.2));
+  border: 2px solid rgba(0, 240, 255, 0.6);
+  border-radius: 10px;
+  color: #00f0ff;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-family: 'Orbitron', monospace;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+}
+
+.button:hover {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.4), rgba(183, 148, 246, 0.4));
+  box-shadow: 0 0 30px rgba(0, 240, 255, 0.6);
+  transform: scale(1.05);
+}
+
+.instructions {
+  margin-top: 30px;
+  font-size: 14px;
+  opacity: 0.6;
+  text-align: center;
+  line-height: 1.8;
+  max-width: 400px;
+}
+
+.username-input-container {
+  margin-bottom: 25px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.username-input {
+  padding: 12px 25px;
+  font-size: 16px;
+  font-family: 'Orbitron', monospace;
+  background: rgba(0, 240, 255, 0.1);
+  border: 2px solid rgba(0, 240, 255, 0.4);
+  border-radius: 10px;
+  color: #00f0ff;
+  text-align: center;
+  outline: none;
+  transition: all 0.3s;
+  letter-spacing: 1px;
+  min-width: 250px;
+}
+
+.username-input::placeholder {
+  color: rgba(0, 240, 255, 0.4);
+}
+
+.username-input:focus {
+  border-color: rgba(0, 240, 255, 0.8);
+  background: rgba(0, 240, 255, 0.15);
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+}
+
+.role-selection {
+  margin-bottom: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.role-label {
+  font-size: 14px;
+  letter-spacing: 2px;
+  opacity: 0.8;
+  font-weight: 700;
+}
+
+.role-buttons {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.role-btn {
+  padding: 15px 20px;
+  background: rgba(0, 240, 255, 0.1);
+  border: 2px solid rgba(0, 240, 255, 0.3);
+  border-radius: 15px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 90px;
+  font-family: 'Orbitron', monospace;
+}
+
+.role-btn:hover {
+  transform: translateY(-5px);
+  border-color: rgba(0, 240, 255, 0.6);
+  background: rgba(0, 240, 255, 0.2);
+}
+
+.role-btn.selected {
+  border-width: 3px;
+  background: rgba(0, 240, 255, 0.3);
+  box-shadow: 0 0 30px rgba(0, 240, 255, 0.5);
+  transform: scale(1.1);
+}
+
+.role-emoji {
+  font-size: 32px;
+}
+
+.role-name {
+  font-size: 12px;
+  color: #00f0ff;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.credits {
+  position: absolute;
+  bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  opacity: 0.6;
+  letter-spacing: 1px;
+}
+
+.credit-line {
+  color: #00f0ff;
+}
+
+.credit-highlight {
+  color: #b794f6;
+  font-weight: 700;
+}
+
+.credit-link {
+  color: #00f0ff;
+  text-decoration: none;
+  font-weight: 700;
+  transition: all 0.3s;
+}
+
+.credit-link:hover {
+  color: #b794f6;
+  text-shadow: 0 0 10px rgba(183, 148, 246, 0.8);
+}
+
+#mobileControls {
+  position: relative;
+  margin-top: 25px;
+  display: none;
+  flex-direction: column;
+  gap: 0;
+  z-index: 500;
+  pointer-events: auto;
+  align-items: center;
+  justify-content: center;
+}
+
+.control-row {
+  display: flex;
+  gap: 30px;
+  justify-content: center;
+}
+
+.control-btn {
+  width: 95px;
+  height: 95px;
+  background: rgba(0, 240, 255, 0.2);
+  border: 3px solid rgba(0, 240, 255, 0.8);
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 42px;
+  color: #00f0ff;
+  cursor: pointer;
+  transition: all 0.1s;
+  box-shadow: 0 0 30px rgba(0, 240, 255, 0.7), inset 0 0 20px rgba(0, 240, 255, 0.2);
+  backdrop-filter: blur(10px);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: none;
+  pointer-events: auto;
+}
+
+.control-btn:active {
+  background: rgba(0, 240, 255, 0.5);
+  box-shadow: 0 0 50px rgba(0, 240, 255, 1), inset 0 0 30px rgba(0, 240, 255, 0.5);
+  transform: scale(0.92);
+  border-color: #00f0ff;
+  color: #ffffff;
+}
+
+#notification {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 36px;
+  font-weight: 900;
+  padding: 30px 50px;
+  background: rgba(1, 4, 9, 0.95);
+  border: 3px solid;
+  border-radius: 20px;
+  display: none;
+  z-index: 200;
+  animation: notificationPop 0.5s;
+  backdrop-filter: blur(10px);
+  text-align: center;
+  max-width: 80%;
+}
+
+.success {
+  color: #00ff88;
+  border-color: #00ff88;
+  box-shadow: 0 0 50px rgba(0, 255, 136, 0.6);
+}
+
+.failure {
+  color: #ff4444;
+  border-color: #ff4444;
+  box-shadow: 0 0 50px rgba(255, 68, 68, 0.6);
+}
+
+.warning {
+  color: #ffaa00;
+  border-color: #ffaa00;
+  box-shadow: 0 0 50px rgba(255, 170, 0, 0.6);
+  font-size: 28px;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes notificationPop {
+  0% { transform: translate(-50%, -50%) scale(0); }
+  50% { transform: translate(-50%, -50%) scale(1.1); }
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes ripple {
+  0% { box-shadow: 0 0 0 0 rgba(0, 240, 255, 0.7); }
+  100% { box-shadow: 0 0 0 100px rgba(0, 240, 255, 0); }
+}
+
+.ripple-effect {
+  animation: ripple 1s;
+}
+
+@media (max-width: 768px), (pointer: coarse) {
+  #gameCanvas {
+    margin-bottom: 20px;
+  }
+  
+  #mobileControls {
+    display: flex !important;
+  }
+  
+  .menu-title {
+    font-size: 32px;
+  }
+  
+  .hud-value {
+    font-size: 18px;
+  }
+  
+  #hud {
+    gap: 15px;
+    padding: 10px 20px;
+    top: 10px;
+  }
+  
+  .role-buttons {
+    gap: 10px;
+  }
+  
+  .role-btn {
+    min-width: 70px;
+    padding: 12px 15px;
+  }
+  
+  .role-emoji {
+    font-size: 24px;
+  }
+  
+  .role-name {
+    font-size: 10px;
+  }
+  
+  .username-input {
+    min-width: 200px;
+    font-size: 14px;
+  }
+  
+  .credits {
+    font-size: 10px;
+    bottom: 10px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  #gameCanvas {
+    margin-bottom: 15px;
+  }
+  
+  #hud {
+    top: 5px;
+    padding: 8px 15px;
+    gap: 10px;
+  }
+  
+  .hud-value {
+    font-size: 16px;
+  }
+  
+  #mobileControls {
+    display: flex !important;
+    margin-top: 10px;
+  }
+  
+  .control-btn {
+    width: 60px;
+    height: 60px;
+    font-size: 24px;
+  }
+  
+  .control-row {
+    gap: 12px;
+  }
+}
+
+/* Always show on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  #mobileControls {
+    display: flex !important;
+  }
+}
+</style>
+</head>
+<body>
+<div id="gameContainer">
+  <div class="game-area">
+    <canvas id="gameCanvas"></canvas>
+    <div class="collected-container">
+      <div class="collected-label">COLLECTED</div>
+      <div id="collectedLetters">---</div>
+    </div>
+  </div>
+  
+  <div id="hud">
+    <div class="hud-item">
+      <div class="hud-label">TARGET WORD</div>
+      <div class="hud-value" id="targetWordHint">- - - - - - -</div>
+    </div>
+    <div class="hud-item">
+      <div class="hud-label">SCORE</div>
+      <div class="hud-value" id="score">0</div>
+    </div>
+    <div class="hud-item">
+      <div class="hud-label">PLAYER</div>
+      <div class="hud-value" id="playerName">Guest</div>
+    </div>
+  </div>
+  
+  <div id="menuScreen">
+    <div class="menu-title">SOUNDNESS SNAKE</div>
+    <div class="menu-subtitle">Proof Builder</div>
+    
+    <div class="username-input-container">
+      <div class="role-label">ENTER YOUR USERNAME</div>
+      <input type="text" id="usernameInput" class="username-input" placeholder="Enter username..." maxlength="15">
+    </div>
+    
+    <div class="role-selection">
+      <div class="role-label">SELECT YOUR ROLE</div>
+      <div class="role-buttons">
+        <button class="role-btn" data-role="wava" data-emoji="🌊" data-color="#00f0ff">
+          <span class="role-emoji">🌊</span>
+          <span class="role-name">Wava</span>
+        </button>
+        <button class="role-btn" data-role="blu" data-emoji="🧊" data-color="#4169e1">
+          <span class="role-emoji">🧊</span>
+          <span class="role-name">Blu</span>
+        </button>
+        <button class="role-btn" data-role="bloop" data-emoji="🫧" data-color="#b794f6">
+          <span class="role-emoji">🫧</span>
+          <span class="role-name">Bloop</span>
+        </button>
+        <button class="role-btn" data-role="zippy" data-emoji="⚡" data-color="#ffd700">
+          <span class="role-emoji">⚡</span>
+          <span class="role-name">Zippy</span>
+        </button>
+        <button class="role-btn" data-role="echo" data-emoji="🔊" data-color="#20b2aa">
+          <span class="role-emoji">🔊</span>
+          <span class="role-name">Echo</span>
+        </button>
+      </div>
+    </div>
+    
+    <button class="button" id="startBtn">START GAME</button>
+    <div class="instructions">
+      Collect letters to form cryptographic terms<br>
+      Complete words to verify proofs<br>
+      Desktop: Arrow Keys / WASD<br>
+      Mobile: Touch Controls
+    </div>
+    <div class="credits">
+      <div class="credit-line">Created by: <a href="https://x.com/0xdhyzal" target="_blank" class="credit-link">0xPamanSam | Evm</a></div>
+      <div class="credit-line">Powered by: <a href="https://x.com/SoundnessLabs" target="_blank" class="credit-link">Soundness</a></div>
+    </div>
+  </div>
+  
+  <div id="gameOverScreen" style="display: none;">
+    <div class="menu-title">VERIFICATION FAILED</div>
+    <div class="menu-subtitle" id="finalScore">Score: 0</div>
+    <div class="menu-subtitle" id="playerNameDisplay" style="opacity: 0.8; margin-top: 10px;">Player: Guest</div>
+    <div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; margin-top: 20px;">
+      <button class="button" id="restartBtn">RESTART</button>
+      <button class="button" id="homeBtn">BACK TO HOME</button>
+    </div>
+  </div>
+  
+  <div id="notification"></div>
+  
+  <div id="mobileControls">
+    <div class="control-row">
+      <div class="control-btn" data-dir="up">⬆️</div>
+    </div>
+    <div class="control-row" style="margin-top: -5px;">
+      <div class="control-btn" data-dir="left">⬅️</div>
+      <div style="width: 95px;"></div>
+      <div class="control-btn" data-dir="right">➡️</div>
+    </div>
+    <div class="control-row" style="margin-top: -5px;">
+      <div class="control-btn" data-dir="down">⬇️</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Audio System
+class AudioSystem {
+  constructor() {
+    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    this.volume = 0.3;
+  }
+  
+  playCollect() {
+    // Create multiple oscillators for richer sound
+    const osc1 = this.ctx.createOscillator();
+    const osc2 = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(this.ctx.destination);
+    
+    // First oscillator - main tone
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(800, this.ctx.currentTime);
+    osc1.frequency.exponentialRampToValueAtTime(1400, this.ctx.currentTime + 0.15);
+    
+    // Second oscillator - harmonic
+    osc2.type = 'triangle';
+    osc2.frequency.setValueAtTime(1600, this.ctx.currentTime);
+    osc2.frequency.exponentialRampToValueAtTime(2000, this.ctx.currentTime + 0.15);
+    
+    gain.gain.setValueAtTime(this.volume * 0.8, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+    
+    osc1.start(this.ctx.currentTime);
+    osc2.start(this.ctx.currentTime);
+    osc1.stop(this.ctx.currentTime + 0.15);
+    osc2.stop(this.ctx.currentTime + 0.15);
+  }
+  
+  playSuccess() {
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    
+    osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1200, this.ctx.currentTime + 0.3);
+    
+    gain.gain.setValueAtTime(this.volume * 1.5, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+    
+    osc.start(this.ctx.currentTime);
+    osc.stop(this.ctx.currentTime + 0.3);
+  }
+  
+  playFailure() {
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    
+    osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.4);
+    
+    gain.gain.setValueAtTime(this.volume * 2, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
+    
+    osc.start(this.ctx.currentTime);
+    osc.stop(this.ctx.currentTime + 0.4);
+  }
+}
+
+// Word Pool
+const WORD_POOL = [
+  'ZKSNARK', 'VERIFIER', 'PROVER', 'WITNESS', 'SOUNDNESS',
+  'PROOF', 'VERIFY', 'CIRCUIT', 'HASH', 'BLS',
+  'CONSISTENCY', 'COMMITMENT', 'ZERO', 'KNOWLEDGE', 'LAYER',
+  'INTEGRITY', 'TRUSTLESS', 'EPOCH', 'VALIDITY', 'ATTEST',
+  'ELLIPTIC', 'CURVE', 'PAIRING', 'GROTH16', 'CIRCOM',
+  'PLONK', 'SNARK', 'STARK', 'TRUSTED', 'SETUP',
+  'AGGREGATION', 'BATCH', 'VERIFIABLE', 'PROTOCOL', 'NODE',
+  'FINALITY', 'CONSENSUS', 'EXECUTION', 'TRANSACTION', 'SIGNATURE',
+  'VALIDATOR', 'RELAYER', 'DECENTRALIZED', 'IMMUTABLE', 'SECURITY',
+  'OPTIMIZATION', 'LATENCY', 'PRECISION', 'ATTESTATION', 'ENCRYPTION'
+];
+
+const ROLE_EMOJIS = ['🌊', '🧊', '🫧', '⚡', '🔊'];
+
+// Letter Colors
+const LETTER_COLORS = {
+  proof: '#00f0ff',    // cyan
+  role: '#b794f6',     // violet
+  structure: '#6366f1' // indigo
+};
+
+function getLetterColor(letter, word) {
+  const proofWords = ['PROOF', 'VERIFY', 'ZKSNARK', 'WITNESS', 'SOUNDNESS', 'VALIDITY'];
+  const roleWords = ['VERIFIER', 'PROVER', 'ATTEST'];
+  const structureWords = ['CIRCUIT', 'LAYER', 'HASH', 'BLS', 'COMMITMENT'];
+  
+  if (proofWords.includes(word)) return LETTER_COLORS.proof;
+  if (roleWords.includes(word)) return LETTER_COLORS.role;
+  if (structureWords.includes(word)) return LETTER_COLORS.structure;
+  return LETTER_COLORS.proof;
+}
+
+// Game Class
+class Game {
+  constructor() {
+    this.canvas = document.getElementById('gameCanvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.audio = new AudioSystem();
+    
+    this.gameState = 'menu';
+    this.score = 0;
+    this.highScore = localStorage.getItem('soundnessSnakeHighScore') || 0;
+    
+    this.gridSize = 20;
+    this.snake = [];
+    this.direction = { x: 1, y: 0 };
+    this.nextDirection = { x: 1, y: 0 };
+    this.letters = [];
+    this.currentWord = '';
+    this.targetWord = '';
+    this.collectedLetters = [];
+    
+    this.lastUpdate = 0;
+    this.updateInterval = 120;
+    this.speedMultiplier = 1;
+    
+    this.keys = {};
+    this.touchDir = null;
+    
+    this.particles = [];
+    this.gridOpacity = 0.1;
+    this.pulsePhase = 0;
+    
+    this.roleEmoji = ROLE_EMOJIS[0];
+    this.selectedRole = 'wava';
+    this.roleColor = '#00f0ff';
+    this.username = 'Guest';
+    
+    this.setupCanvas();
+    this.setupInput();
+    this.setupUI();
+    this.gameLoop();
+  }
+  
+  setupCanvas() {
+    const resize = () => {
+      const container = document.getElementById('gameContainer');
+      const maxWidth = Math.min(window.innerWidth - 40, 800);
+      const maxHeight = Math.min(window.innerHeight - 200, 600);
+      
+      let size = Math.min(maxWidth, maxHeight);
+      
+      if (window.innerWidth < 768) {
+        size = Math.min(window.innerWidth - 20, window.innerHeight - 250);
+      }
+      
+      this.canvas.width = size;
+      this.canvas.height = size;
+      
+      this.cols = Math.floor(this.canvas.width / this.gridSize);
+      this.rows = Math.floor(this.canvas.height / this.gridSize);
+    };
+    
+    resize();
+    window.addEventListener('resize', resize);
+  }
+  
+  setupInput() {
+    // Keyboard
+    document.addEventListener('keydown', (e) => {
+      // Only prevent default for game controls when NOT typing in input
+      if (e.target.tagName !== 'INPUT' && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code)) {
+        e.preventDefault();
+      }
+      
+      // Don't process game keys if typing in input
+      if (e.target.tagName === 'INPUT') return;
+      
+      this.keys[e.code] = true;
+      
+      if (this.gameState === 'playing') {
+        if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+          if (this.direction.y === 0) this.nextDirection = { x: 0, y: -1 };
+        } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+          if (this.direction.y === 0) this.nextDirection = { x: 0, y: 1 };
+        } else if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+          if (this.direction.x === 0) this.nextDirection = { x: -1, y: 0 };
+        } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+          if (this.direction.x === 0) this.nextDirection = { x: 1, y: 0 };
+        }
+      }
+    });
+    
+    document.addEventListener('keyup', (e) => {
+      this.keys[e.code] = false;
+    });
+    
+    // Touch controls - enhanced for better responsiveness
+    const controlBtns = document.querySelectorAll('.control-btn');
+    controlBtns.forEach(btn => {
+      // Touch events
+      btn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const dir = btn.getAttribute('data-dir');
+        this.handleTouchControl(dir);
+      }, { passive: false });
+      
+      // Mouse events (for desktop mode on mobile)
+      btn.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const dir = btn.getAttribute('data-dir');
+        this.handleTouchControl(dir);
+      });
+      
+      // Click fallback
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const dir = btn.getAttribute('data-dir');
+        this.handleTouchControl(dir);
+      });
+      
+      // Pointer events (modern approach)
+      btn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const dir = btn.getAttribute('data-dir');
+        this.handleTouchControl(dir);
+      });
+    });
+  }
+  
+  handleTouchControl(dir) {
+    if (this.gameState !== 'playing') return;
+    
+    // Immediate direction change for better responsiveness
+    switch(dir) {
+      case 'up':
+        if (this.direction.y === 0) {
+          this.nextDirection = { x: 0, y: -1 };
+          this.direction = { x: 0, y: -1 };
+        }
+        break;
+      case 'down':
+        if (this.direction.y === 0) {
+          this.nextDirection = { x: 0, y: 1 };
+          this.direction = { x: 0, y: 1 };
+        }
+        break;
+      case 'left':
+        if (this.direction.x === 0) {
+          this.nextDirection = { x: -1, y: 0 };
+          this.direction = { x: -1, y: 0 };
+        }
+        break;
+      case 'right':
+        if (this.direction.x === 0) {
+          this.nextDirection = { x: 1, y: 0 };
+          this.direction = { x: 1, y: 0 };
+        }
+        break;
+    }
+  }
+  
+  setupUI() {
+    const startBtn = document.getElementById('startBtn');
+    const restartBtn = document.getElementById('restartBtn');
+    const homeBtn = document.getElementById('homeBtn');
+    
+    // Role selection
+    const roleBtns = document.querySelectorAll('.role-btn');
+    roleBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        // Remove selected class from all buttons
+        roleBtns.forEach(b => b.classList.remove('selected'));
+        // Add selected class to clicked button
+        btn.classList.add('selected');
+        
+        // Update selected role
+        this.selectedRole = btn.getAttribute('data-role');
+        this.roleEmoji = btn.getAttribute('data-emoji');
+        this.roleColor = btn.getAttribute('data-color');
+        
+        // Update button border color
+        btn.style.borderColor = this.roleColor;
+        btn.style.boxShadow = `0 0 30px ${this.roleColor}80`;
+      });
+    });
+    
+    // Set default selection
+    roleBtns[0].classList.add('selected');
+    
+    // Username input
+    const usernameInput = document.getElementById('usernameInput');
+    usernameInput.addEventListener('input', (e) => {
+      this.username = e.target.value.trim() || 'Guest';
+    });
+    
+    startBtn.addEventListener('click', () => {
+      // Save username
+      if (this.username && this.username !== 'Guest') {
+        localStorage.setItem('soundnessSnakeUsername', this.username);
+      }
+      this.startGame();
+    });
+    
+    restartBtn.addEventListener('click', () => {
+      this.startGame();
+    });
+    
+    homeBtn.addEventListener('click', () => {
+      this.backToHome();
+    });
+  }
+  
+  startGame() {
+    this.gameState = 'playing';
+    this.score = 0;
+    this.collectedLetters = [];
+    this.particles = [];
+    
+    // Hide menus
+    document.getElementById('menuScreen').style.display = 'none';
+    document.getElementById('gameOverScreen').style.display = 'none';
+    
+    // Initialize snake in center
+    const centerX = Math.floor(this.cols / 2);
+    const centerY = Math.floor(this.rows / 2);
+    
+    this.snake = [
+      { x: centerX, y: centerY },
+      { x: centerX - 1, y: centerY },
+      { x: centerX - 2, y: centerY }
+    ];
+    
+    this.direction = { x: 1, y: 0 };
+    this.nextDirection = { x: 1, y: 0 };
+    
+    // Select random word and spawn letters
+    this.selectNewWord();
+    
+    // Update UI
+    this.updateUI();
+  }
+  
+  selectNewWord() {
+    this.targetWord = WORD_POOL[Math.floor(Math.random() * WORD_POOL.length)];
+    this.currentWord = '';
+    this.collectedLetters = [];
+    this.letters = [];
+    
+    // Spawn letters for the word
+    const wordLetters = this.targetWord.split('');
+    wordLetters.forEach((letter, index) => {
+      this.spawnLetter(letter, index);
+    });
+    
+    // Update role emoji
+    this.roleEmoji = ROLE_EMOJIS[Math.floor(Math.random() * ROLE_EMOJIS.length)];
+    
+    // Update target word hint
+    this.updateTargetHint();
+  }
+  
+  updateTargetHint() {
+    const hint = this.targetWord.split('').map((letter, index) => {
+      if (this.currentWord[index] === letter) {
+        return letter;
+      }
+      return letter.toLowerCase();
+    }).join(' ');
+    document.getElementById('targetWordHint').textContent = hint;
+  }
+  
+  spawnLetter(letter, index) {
+    let x, y;
+    let attempts = 0;
+    const maxAttempts = 100;
+    
+    do {
+      x = Math.floor(Math.random() * this.cols);
+      y = Math.floor(Math.random() * this.rows);
+      attempts++;
+    } while (this.isPositionOccupied(x, y) && attempts < maxAttempts);
+    
+    if (attempts < maxAttempts) {
+      this.letters.push({
+        x, y,
+        letter,
+        index,
+        color: getLetterColor(letter, this.targetWord),
+        bobPhase: Math.random() * Math.PI * 2
+      });
+    }
+  }
+  
+  isPositionOccupied(x, y) {
+    // Check snake
+    for (let segment of this.snake) {
+      if (segment.x === x && segment.y === y) return true;
+    }
+    
+    // Check other letters
+    for (let letter of this.letters) {
+      if (letter.x === x && letter.y === y) return true;
+    }
+    
+    return false;
+  }
+  
+  update(deltaTime) {
+    if (this.gameState !== 'playing') return;
+    
+    this.lastUpdate += deltaTime;
+    this.pulsePhase += deltaTime * 0.002;
+    
+    // Update particles
+    this.particles = this.particles.filter(p => {
+      p.life -= deltaTime;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.opacity = p.life / p.maxLife;
+      return p.life > 0;
+    });
+    
+    // Update letter bob animation
+    this.letters.forEach(letter => {
+      letter.bobPhase += deltaTime * 0.003;
+    });
+    
+    if (this.lastUpdate >= this.updateInterval) {
+      this.lastUpdate = 0;
+      this.moveSnake();
+    }
+  }
+  
+  moveSnake() {
+    // Update direction
+    this.direction = { ...this.nextDirection };
+    
+    // Calculate new head position
+    const head = { ...this.snake[0] };
+    head.x += this.direction.x;
+    head.y += this.direction.y;
+    
+    // Check wall collision
+    if (head.x < 0 || head.x >= this.cols || head.y < 0 || head.y >= this.rows) {
+      this.gameOver();
+      return;
+    }
+    
+    // Check self collision
+    for (let i = 0; i < this.snake.length; i++) {
+      if (this.snake[i].x === head.x && this.snake[i].y === head.y) {
+        this.gameOver();
+        return;
+      }
+    }
+    
+    // Add new head
+    this.snake.unshift(head);
+    
+    // Check letter collection
+    let collectedLetter = null;
+    let collectedIndex = -1;
+    for (let i = 0; i < this.letters.length; i++) {
+      if (this.letters[i].x === head.x && this.letters[i].y === head.y) {
+        collectedLetter = this.letters[i];
+        collectedIndex = i;
+        break;
+      }
+    }
+    
+    if (collectedLetter) {
+      // Auto-correct: Check if it's the correct letter in sequence
+      const nextIndex = this.currentWord.length;
+      const expectedLetter = this.targetWord[nextIndex];
+      
+      if (collectedLetter.letter === expectedLetter) {
+        // Correct letter - remove from array and collect
+        this.letters.splice(collectedIndex, 1);
+        this.collectLetter(collectedLetter);
+      } else {
+        // Wrong letter - don't collect, don't grow snake
+        this.snake.pop();
+        this.showBriefNotification('⚠️ Collect letters in order!', 'warning');
+      }
+    } else {
+      // Remove tail if no letter collected
+      this.snake.pop();
+    }
+  }
+  
+  collectLetter(letter) {
+    this.audio.playCollect();
+    this.collectedLetters.push(letter);
+    this.currentWord += letter.letter;
+    
+    // Create particles
+    const screenX = letter.x * this.gridSize + this.gridSize / 2;
+    const screenY = letter.y * this.gridSize + this.gridSize / 2;
+    
+    for (let i = 0; i < 15; i++) {
+      const angle = (Math.PI * 2 * i) / 15;
+      this.particles.push({
+        x: screenX,
+        y: screenY,
+        vx: Math.cos(angle) * 2,
+        vy: Math.sin(angle) * 2,
+        life: 500,
+        maxLife: 500,
+        opacity: 1,
+        color: letter.color
+      });
+    }
+    
+    this.updateUI();
+    
+    // Check if word is complete
+    if (this.currentWord === this.targetWord) {
+      this.completeWord();
+    }
+  }
+  
+  completeWord() {
+    this.audio.playSuccess();
+    this.score += this.targetWord.length * 10;
+    
+    // Show notification
+    this.showNotification('✅ PROOF VERIFIED', 'success');
+    
+    // Ripple effect
+    this.canvas.classList.add('ripple-effect');
+    setTimeout(() => {
+      this.canvas.classList.remove('ripple-effect');
+    }, 1000);
+    
+    // Update high score
+    if (this.score > this.highScore) {
+      this.highScore = this.score;
+      localStorage.setItem('soundnessSnakeHighScore', this.highScore);
+    }
+    
+    this.updateUI();
+    
+    // Select new word after delay
+    setTimeout(() => {
+      this.selectNewWord();
+      this.updateUI();
+    }, 1500);
+  }
+  
+  gameOver() {
+    this.gameState = 'gameover';
+    this.audio.playFailure();
+    
+    document.getElementById('finalScore').textContent = `Score: ${this.score}`;
+    document.getElementById('playerNameDisplay').textContent = `Player: ${this.username}`;
+    document.getElementById('gameOverScreen').style.display = 'flex';
+    
+    this.showNotification('❌ VERIFICATION FAILED', 'failure');
+  }
+  
+  backToHome() {
+    this.gameState = 'menu';
+    document.getElementById('gameOverScreen').style.display = 'none';
+    document.getElementById('menuScreen').style.display = 'flex';
+    
+    // Clear username completely
+    this.username = 'Guest';
+    const usernameInput = document.getElementById('usernameInput');
+    usernameInput.value = '';
+    document.getElementById('playerName').textContent = 'Guest';
+    
+    // Remove saved username from localStorage
+    localStorage.removeItem('soundnessSnakeUsername');
+  }
+  
+  showNotification(text, type) {
+    const notification = document.getElementById('notification');
+    notification.textContent = text;
+    notification.className = type;
+    notification.style.display = 'block';
+    
+    setTimeout(() => {
+      notification.style.display = 'none';
+    }, 2000);
+  }
+  
+  showBriefNotification(text, type) {
+    const notification = document.getElementById('notification');
+    notification.textContent = text;
+    notification.className = type;
+    notification.style.display = 'block';
+    
+    setTimeout(() => {
+      notification.style.display = 'none';
+    }, 1000);
+  }
+  
+  updateUI() {
+    document.getElementById('collectedLetters').textContent = this.currentWord || '---';
+    document.getElementById('score').textContent = this.score;
+    document.getElementById('playerName').textContent = this.username;
+    this.updateTargetHint();
+  }
+  
+  render() {
+    const ctx = this.ctx;
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    // Draw grid
+    this.drawGrid();
+    
+    // Draw particles
+    this.particles.forEach(p => {
+      ctx.globalAlpha = p.opacity;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    
+    if (this.gameState === 'playing') {
+      // Draw letters
+      this.letters.forEach(letter => {
+        const x = letter.x * this.gridSize + this.gridSize / 2;
+        const y = letter.y * this.gridSize + this.gridSize / 2;
+        const bobOffset = Math.sin(letter.bobPhase) * 3;
+        
+        // Glow
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = letter.color;
+        
+        // Letter background
+        ctx.fillStyle = letter.color + '33';
+        ctx.beginPath();
+        ctx.arc(x, y + bobOffset, this.gridSize * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Letter text
+        ctx.fillStyle = letter.color;
+        ctx.font = `bold ${this.gridSize * 0.7}px Orbitron`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(letter.letter, x, y + bobOffset);
+        
+        ctx.shadowBlur = 0;
+      });
+      
+      // Draw snake
+      this.snake.forEach((segment, index) => {
+        const x = segment.x * this.gridSize + this.gridSize / 2;
+        const y = segment.y * this.gridSize + this.gridSize / 2;
+        
+        const gradient = ctx.createRadialGradient(x, y, 0, x, y, this.gridSize * 0.5);
+        
+        // Get RGB components from hex color
+        const hexToRgb = (hex) => {
+          const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+          return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+          } : { r: 0, g: 240, b: 255 };
+        };
+        
+        const rgb = hexToRgb(this.roleColor);
+        
+        if (index === 0) {
+          // Head - brighter
+          gradient.addColorStop(0, this.roleColor);
+          gradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.6)`);
+        } else {
+          // Body - gradient fade
+          const alpha = 1 - (index / this.snake.length) * 0.5;
+          gradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`);
+          gradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha * 0.5})`);
+        }
+        
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = this.roleColor;
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(x, y, this.gridSize * 0.45, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.shadowBlur = 0;
+      });
+    }
+  }
+  
+  drawGrid() {
+    const ctx = this.ctx;
+    const pulse = Math.sin(this.pulsePhase) * 0.05 + this.gridOpacity;
+    
+    ctx.strokeStyle = `rgba(0, 240, 255, ${pulse})`;
+    ctx.lineWidth = 1;
+    
+    // Vertical lines
+    for (let x = 0; x <= this.cols; x++) {
+      ctx.beginPath();
+      ctx.moveTo(x * this.gridSize, 0);
+      ctx.lineTo(x * this.gridSize, this.canvas.height);
+      ctx.stroke();
+    }
+    
+    // Horizontal lines
+    for (let y = 0; y <= this.rows; y++) {
+      ctx.beginPath();
+      ctx.moveTo(0, y * this.gridSize);
+      ctx.lineTo(this.canvas.width, y * this.gridSize);
+      ctx.stroke();
+    }
+  }
+  
+  gameLoop(timestamp = 0) {
+    const deltaTime = timestamp - (this.lastTimestamp || timestamp);
+    this.lastTimestamp = timestamp;
+    
+    this.update(deltaTime);
+    this.render();
+    
+    requestAnimationFrame((t) => this.gameLoop(t));
+  }
+}
+
+// Initialize game
+window.addEventListener('DOMContentLoaded', () => {
+  try {
+    new Game();
+  } catch (error) {
+    console.error('Game initialization failed:', error);
+    document.body.innerHTML = '<h1 style="color: #ff4444; text-align: center; margin-top: 50px;">Game failed to load. Please refresh the page.</h1>';
+  }
+});
+</script>
+</body>
+</html>
